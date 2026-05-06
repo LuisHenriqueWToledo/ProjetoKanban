@@ -46,21 +46,34 @@ def validar_texto(v: str) -> str:
 
 
 def validar_email(v: str) -> str:
-    partes = v.split('@')
-    if len(partes) != 2:
+    # 1. Verifica a existência do '@' de forma única
+    if v.count('@') != 1:
         raise ValueError("Email deve conter exatamente um '@'")
-    nome, dominio = partes
+    
+    nome, dominio = v.split('@')
+
+    # 2. Validação de Comprimento (Mantendo a regra dos seus colegas)
     if not (2 <= len(nome) <= 10):
         raise ValueError("Parte local do email deve ter entre 2 e 10 caracteres")
     if not (2 <= len(dominio) <= 20):
         raise ValueError("Domínio do email deve ter entre 2 e 20 caracteres")
+
+    # 3. Verificação de pontos nas extremidades
     if nome.startswith('.') or nome.endswith('.') or dominio.startswith('.') or dominio.endswith('.'):
         raise ValueError("Email não pode começar ou terminar com ponto em nenhuma das partes")
-    for parte in (nome, dominio):
-        if not all(c.isalpha() or c == '.' for c in parte):
-            raise ValueError("Email pode conter apenas letras e pontos (ex: pedro@gmail.com)")
-        if '..' in parte:
-            raise ValueError("Email não pode ter pontos consecutivos")
+
+    # 4. Verificação de pontos consecutivos
+    if '..' in nome or '..' in dominio:
+        raise ValueError("Email não pode ter pontos consecutivos")
+
+    # 5. Regex para Caracteres Permitidos
+    # Esta regex permite letras, números, pontos, underscores e hifens
+    # Se quiser manter APENAS letras e pontos como no original, use: r'^[a-zA-Z.]+$'
+    padrao_caracteres = r'^[a-zA-Z0-9._-]+$'
+    
+    if not re.match(padrao_caracteres, nome) or not re.match(padrao_caracteres, dominio):
+        raise ValueError("Email contém caracteres inválidos (use apenas letras, números, pontos, _ ou -)")
+
     return v
 
 
