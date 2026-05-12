@@ -202,3 +202,6 @@ O produto será considerado aceito quando:
 4. O status do quadro for atualizado automaticamente ao mover cartões
 5. Os timestamps `iniciado_em` e `concluido_em` forem registrados corretamente
 6. A aplicação funcionar corretamente nos navegadores Chrome, Firefox e Edge em suas versões recentes
+
+## Link
+https://docs.google.com/document/d/1OsuaemBGD4x74J1DkxRxuFqm0rUbX0zKr174P8CM74Y/edit?usp=sharing

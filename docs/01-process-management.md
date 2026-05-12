@@ -222,3 +222,6 @@ Usuário                Sistema              Banco de Dados
    │                      │── UPDATE status_quadro▶
    │◀── Cartão movido ─────│                       │
 ```
+
+## Link
+https://docs.google.com/document/d/1LkhOIwT9gKa-4z2mxxDhM8Oml6Gz9Hjxyq-n_PsO-EE/edit?usp=sharing
