@@ -337,3 +337,6 @@ Este documento especifica os requisitos não funcionais (RNF) do sistema Kanban 
 | RNF-PORT-01   | `requirements.txt` com dependências portáveis            |
 | RNF-PORT-02   | `models.Base.metadata.create_all(bind=engine)` em `main.py` |
 | RNF-COMP-02   | FastAPI gera automaticamente `/docs` e `/redoc`          |
+
+## Link
+https://docs.google.com/document/d/13nzqcIo8rn389AA8-JqbjToc2vKD3AoLgqHwMx2gg78/edit?usp=sharing

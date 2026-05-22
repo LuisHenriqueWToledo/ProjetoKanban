@@ -430,3 +430,7 @@
 | **Should Have** | US-03, US-04, US-07, US-08, US-13, US-14, US-15, US-16 |
 | **Could Have** | US-05, US-17, US-18                          |
 | **Won't Have (v1)** | Notificações, exportação, comentários   |
+
+
+## Link
+https://docs.google.com/document/d/145Gvsj7Ux2V33LvDlRKBWVVg8JULmQ5JnkGJ2ia4RiQ/edit?usp=sharing

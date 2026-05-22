@@ -315,3 +315,7 @@ O Kanban Web é uma evolução web do sistema C++ original. A tabela abaixo most
 - FastAPI gera automaticamente documentação OpenAPI em `/docs`
 - Erros são logados pelo uvicorn no stdout
 - Endpoints retornam códigos HTTP semanticamente corretos para facilitar debugging
+
+
+## Link
+https://docs.google.com/document/d/15Z3ShHhk9FV_KUzAEby_9rZUJKBw9SkCDmQkTXE8q8U/edit?usp=sharing

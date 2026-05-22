@@ -382,3 +382,6 @@ O design da interface do Kanban Web segue os seguintes princípios:
 | > 1024px (desktop) | Grid de 4 colunas (layout padrão)             |
 
 Tailwind CSS gerencia os breakpoints via classes utilitárias responsivas (`sm:`, `md:`, `lg:`).
+
+## Link
+https://docs.google.com/document/d/1FWlPFiwcXTkyFTqmgb4l1-WuBL-sM40wgCSYkXd64l4/edit?usp=sharing
