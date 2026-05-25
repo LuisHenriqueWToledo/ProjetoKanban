@@ -375,3 +375,6 @@ O roteiro abaixo descreve os passos para um **teste de sistema completo** do pro
 | Tailwind via CDN                       | Dependência de rede externa para dev         | Build local com PostCSS + PurgeCSS          |
 | Sem paginação na listagem              | Pode degradar com muitos cartões             | Implementar paginação nos endpoints GET     |
 | Sem autenticação nos endpoints GET     | Qualquer pessoa com a URL pode ler dados     | Exigir header de autenticação em todos endpoints |
+
+## Link
+https://docs.google.com/document/d/15j9j3PKQuSoJCKfXpOBs5Fg4lp3iw4GiotgufvHq21o/edit?usp=sharing

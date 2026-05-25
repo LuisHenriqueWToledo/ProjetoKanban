@@ -312,3 +312,6 @@ O SQLite é suficiente para o volume esperado (dezenas de usuários, centenas de
 | **Backup automático** | Script cron: `cp kanban.db kanban_backup_$(date +%F).db` |
 | **Recuperação**  | Substituir `kanban.db` pela cópia de backup e reiniciar   |
 | **WAL Mode** (recomendado) | `PRAGMA journal_mode=WAL;` para maior concorrência |
+
+## Link
+https://docs.google.com/document/d/17AWKXsl2AyLVWO7I0txoEBSTroz8OgN-dU3hqYAkTJM/edit?usp=sharing

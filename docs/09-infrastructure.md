@@ -307,3 +307,6 @@ Gerenciar via arquivo `.env` com `python-dotenv` (adicionar ao `requirements.txt
 | **SSL**             | Não necessário                     | Let's Encrypt (gratuito)              |
 | **Domínio**         | `localhost` / `127.0.0.1`          | Domínio público registrado            |
 | **Custo mensal**    | R$ 0                               | R$ 0–30 (free tier ou VPS básico)     |
+
+## Link
+https://docs.google.com/document/d/1B7df3sIMN7XgWKAmk9EcM2z_KYSpxqxD8kM02CTXQck/edit?usp=sharing
