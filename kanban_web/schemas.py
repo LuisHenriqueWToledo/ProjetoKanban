@@ -78,32 +78,27 @@ def validar_email(v: str) -> str:
 
 
 def validar_nome(v: str) -> str:
+    v = v.strip()
     if not (5 <= len(v) <= 30):
         raise ValueError("Nome deve ter entre 5 e 30 caracteres")
     if not v[0].isupper():
         raise ValueError("Nome deve começar com letra maiúscula")
     if "  " in v:
         raise ValueError("Nome não pode ter espaços duplos")
-    if v.strip() != v:
-        raise ValueError("Nome não pode ter espaços no início ou no fim")
     if not all(c.isalpha() or c in (' ', '-', "'") for c in v):
         raise ValueError("Nome pode conter apenas letras, espaços e hífens")
     return v
 
 
 def validar_senha(v: str) -> str:
-    if len(v) != 5:
-        raise ValueError("Senha deve ter exatamente 5 caracteres")
-    if len(set(v)) != len(v):
-        raise ValueError("Senha não pode ter caracteres repetidos")
+    if len(v) < 8:
+        raise ValueError("Senha deve ter ao menos 8 caracteres")
     if not any(c.isupper() for c in v):
         raise ValueError("Senha deve ter ao menos uma letra maiúscula")
-    if not any(c.islower() for c in v):
-        raise ValueError("Senha deve ter ao menos uma letra minúscula")
     if not any(c.isdigit() for c in v):
-        raise ValueError("Senha deve ter ao menos um dígito")
-    if not any(c in ".,;!?" for c in v):
-        raise ValueError("Senha deve ter ao menos um sinal de pontuação (.,;!?)")
+        raise ValueError("Senha deve ter ao menos um número")
+    if not any(not c.isalnum() for c in v):
+        raise ValueError("Senha deve ter ao menos um caractere especial")
     return v
 
 

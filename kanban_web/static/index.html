@@ -121,14 +121,14 @@
       <div>
         <label class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Nova Senha</label>
         <div class="relative mt-1">
-          <input x-model="fPerfil.senha" :type="showSenhaPerfil ? 'text' : 'password'" placeholder="Nova senha (5 chars)" maxlength="5"
+          <input x-model="fPerfil.senha" :type="showSenhaPerfil ? 'text' : 'password'" placeholder="Nova senha (mín. 8 chars)"
             class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 pr-10" />
           <button type="button" @click="showSenhaPerfil = !showSenhaPerfil"
             class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-base select-none">
             <span x-text="showSenhaPerfil ? '🙈' : '👁️'"></span>
           </button>
         </div>
-        <p class="text-xs text-gray-400 mt-1">Exatamente 5 chars únicos: maiúscula + minúscula + número + pontuação (.,;!?). Deixe em branco para não alterar</p>
+        <p class="text-xs text-gray-400 mt-1">Mínimo 8 caracteres com maiúscula, número e caractere especial. Deixe em branco para não alterar</p>
       </div>
       <button @click="salvarPerfil()"
         class="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2 rounded-lg text-sm font-medium">
@@ -214,7 +214,7 @@
       <input x-model="form.email" type="text" placeholder="Email" required
         class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
       <div class="relative">
-        <input x-model="form.senha" :type="showSenha ? 'text' : 'password'" placeholder="Senha (5 caracteres)" maxlength="5" required
+        <input x-model="form.senha" :type="showSenha ? 'text' : 'password'" placeholder="Senha" required
           class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 pr-10" />
         <button type="button" @click="showSenha = !showSenha"
           class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-base select-none"
@@ -241,7 +241,7 @@
       </div>
       <div>
         <div class="relative">
-          <input x-model="form.senha" :type="showSenha ? 'text' : 'password'" placeholder="Senha de 5 chars (ex: Ab1.x)" maxlength="5" required
+          <input x-model="form.senha" :type="showSenha ? 'text' : 'password'" placeholder="Senha (ex: Senha@123)" required
             class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 pr-10" />
           <button type="button" @click="showSenha = !showSenha"
             class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-base select-none"
@@ -249,7 +249,7 @@
             <span x-text="showSenha ? '🙈' : '👁️'"></span>
           </button>
         </div>
-        <p class="text-xs text-gray-400 mt-1">Exatamente 5 chars únicos: maiúscula + minúscula + número + pontuação (.,;!?)</p>
+        <p class="text-xs text-gray-400 mt-1">Mínimo 8 caracteres com maiúscula, número e caractere especial</p>
       </div>
       <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2 rounded-lg text-sm font-medium">
         Criar Conta
