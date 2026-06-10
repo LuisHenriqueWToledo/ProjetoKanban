@@ -84,9 +84,9 @@ O sistema adota uma **arquitetura monolítica em camadas** com exposição via *
 
 **Responsabilidades:**
 - Renderizar a interface de usuário (SPA — Single Page Application)
-- Gerenciar estado local (sessão do usuário, quadro ativo, modal aberto)
+- Gerenciar estado local (sessão do usuário, quadro ativo, modal aberto, raias)
 - Realizar chamadas HTTP à API via `fetch()`
-- Exibir feedback visual (toast, modal, drag-and-drop)
+- Exibir feedback visual (toast, modal, drag-and-drop em colunas e raias)
 
 **Decisões de Design:**
 
@@ -120,6 +120,7 @@ O sistema adota uma **arquitetura monolítica em camadas** com exposição via *
 | `routers/contas.py` | `/contas`     | CRUD de conta de usuário                        |
 | `routers/quadros.py`| `/quadros`    | CRUD de quadros + movimentação de status        |
 | `routers/cartoes.py`| `/cartoes`    | CRUD de cartões + movimentação + métricas       |
+| `routers/raias.py`  | `/raias`      | CRUD de raias + ordenação                       |
 | `routers/membros.py`| `/quadros`    | Gestão de membros (co-prefixo com quadros)      |
 
 **Padrões adotados:**
@@ -169,9 +170,10 @@ LoginRequest   →  validação de entrada de autenticação
 | Classe        | Tabela          | Relacionamentos                              |
 |---------------|-----------------|----------------------------------------------|
 | `Conta`       | `contas`        | 1→N com `Quadro` (dono); 1→N com `QuadroMembro` |
-| `Quadro`      | `quadros`       | N→1 com `Conta`; 1→N com `Cartao`; 1→N com `QuadroMembro` |
+| `Quadro`      | `quadros`       | N→1 com `Conta`; 1→N com `Raia`; 1→N com `Cartao`; 1→N com `QuadroMembro` |
+| `Raia`        | `raias`         | N→1 com `Quadro`; 1→N com `Cartao`            |
 | `QuadroMembro`| `quadro_membros`| N→1 com `Quadro`; N→1 com `Conta`            |
-| `Cartao`      | `cartoes`       | N→1 com `Quadro`                             |
+| `Cartao`      | `cartoes`       | N→1 com `Quadro`; N→1 com `Raia`             |
 
 ### 3.5 Camada de Persistência
 
@@ -277,6 +279,34 @@ Browser                FastAPI              Pydantic            SQLAlchemy      
 | **Decisão**   | `iniciado_em` e `concluido_em` são registrados apenas na **primeira** transição |
 | **Razão**     | Evita distorção de métricas por movimentos de ida e volta entre colunas    |
 | **Trade-offs**| Se um cartão voltar de `FEITO` para `EM TESTE`, o timestamp permanece      |
+
+### ADR-07: Raias Horizontais por Responsável
+
+| Campo         | Conteúdo                                                                   |
+|---------------|----------------------------------------------------------------------------|
+| **Contexto**  | O quadro precisava explicitar distribuição de carga entre membros          |
+| **Decisão**   | Adotar raias horizontais por responsável, com CRUD próprio                 |
+| **Razão**     | Melhora visibilidade de ownership e facilita reatribuição de trabalho      |
+| **Trade-offs**| Maior complexidade de UI (matriz coluna x raia) e de persistência          |
+| **Revisão**   | Evolução futura pode permitir raias por outro critério (ex: prioridade)    |
+
+### ADR-08: Throughput em Janela Móvel de 7 Dias
+
+| Campo         | Conteúdo                                                                   |
+|---------------|----------------------------------------------------------------------------|
+| **Contexto**  | Era necessário padronizar throughput para leitura operacional consistente   |
+| **Decisão**   | Throughput oficial definido como cartões concluídos nos últimos 7 dias      |
+| **Razão**     | Janela curta e estável para detectar variação recente de entrega           |
+| **Trade-offs**| Não representa sazonalidade de períodos longos (ex: mês/sprint completa)   |
+| **Revisão**   | Futuramente aceitar seleção de período (7d/14d/30d) mantendo 7d padrão      |
+
+**Contrato de métricas por quadro:**
+
+- `lead_time_medio_dias`: média de `concluido_em - criado_em`
+- `cycle_time_medio_dias`: média de `concluido_em - iniciado_em`
+- `throughput_7d`: quantidade de cartões concluídos nos últimos 7 dias
+- `throughput_dia_medio`: `throughput_7d / 7`
+- `wip_atual`: quantidade de cartões na coluna `FAZENDO`
 
 ---
 

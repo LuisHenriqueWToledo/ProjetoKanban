@@ -227,10 +227,44 @@ class MembroOut(BaseModel):
         from_attributes = True
 
 
+# ── Raias ─────────────────────────────────────────────────────────────────────
+
+class RaiaCreate(BaseModel):
+    nome: str
+    responsavel: str
+    ordem_exibicao: int = 0
+
+    @field_validator("nome", "responsavel")
+    @classmethod
+    def check_texto(cls, v): return validar_texto(v)
+
+
+class RaiaUpdate(BaseModel):
+    nome: str
+    responsavel: str
+    ordem_exibicao: int
+
+    @field_validator("nome", "responsavel")
+    @classmethod
+    def check_texto(cls, v): return validar_texto(v)
+
+
+class RaiaOut(BaseModel):
+    id_raia: int
+    codigo_quadro: str
+    nome: str
+    responsavel: str
+    ordem_exibicao: int
+
+    class Config:
+        from_attributes = True
+
+
 
 class CartaoCreate(BaseModel):
     codigo: str
     codigo_quadro: str
+    id_raia: int
     nome: str
     descricao: str
     responsavel: str
@@ -287,9 +321,14 @@ class CartaoMover(BaseModel):
     coluna: ColunaEnum
 
 
+class CartaoMoverRaia(BaseModel):
+    id_raia: int
+
+
 class CartaoOut(BaseModel):
     codigo: str
     codigo_quadro: str
+    id_raia: int
     nome: str
     descricao: str
     responsavel: str
@@ -308,6 +347,7 @@ class CartaoOut(BaseModel):
 
 class MetricasOut(BaseModel):
     wip_atual: int
-    throughput: int
+    throughput_7d: int
+    throughput_dia_medio: float
     lead_time_medio_dias: Optional[float]
     cycle_time_medio_dias: Optional[float]

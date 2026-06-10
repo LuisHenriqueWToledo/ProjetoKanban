@@ -27,8 +27,9 @@
 | EP-01 | Gestão de Identidade (autenticação e conta)            |
 | EP-02 | Gestão de Projetos (quadros Kanban)                    |
 | EP-03 | Gestão de Tarefas (cartões Kanban)                     |
-| EP-04 | Colaboração (membros e permissões)                     |
-| EP-05 | Métricas e Análise de Desempenho                       |
+| EP-04 | Gestão de Raias (swimlanes por responsável)            |
+| EP-05 | Colaboração (membros e permissões)                     |
+| EP-06 | Métricas e Análise de Desempenho                       |
 
 ---
 
@@ -243,12 +244,13 @@
 #### US-11 — Visualizar Cartões do Quadro
 
 **Como** Rafael (observador),  
-**Quero** ver todos os cartões de um quadro organizados por coluna,  
+**Quero** ver todos os cartões de um quadro organizados por coluna e raia,  
 **Para que** eu possa acompanhar o progresso das tarefas.
 
 **Critérios de Aceitação:**
 
-- [ ] Os cartões são listados em suas respectivas colunas (`A FAZER`, `FAZENDO`, `EM TESTE`, `FEITO`)
+- [ ] Os cartões são listados em suas respectivas colunas (`A FAZER`, `FAZENDO`, `EM TESTE`, `FEITO`) e raias
+- [ ] Cada raia representa um responsável do quadro
 - [ ] Cada cartão exibe: código, nome, responsável, prioridade e data limite (se houver)
 - [ ] A prioridade é destacada visualmente (ex: cor de badge diferente por nível)
 - [ ] O número de cartões em cada coluna é exibido junto com o limite WIP
@@ -267,6 +269,7 @@
 **Critérios de Aceitação:**
 
 - [ ] Cartões podem ser movidos por drag-and-drop entre as colunas
+- [ ] Cartões podem ser movidos entre células da matriz (coluna de destino + raia atual)
 - [ ] Ao tentar mover para uma coluna que atingiu o limite WIP, o movimento é bloqueado e uma mensagem de erro é exibida
 - [ ] Quando um cartão é movido para `FAZENDO` pela primeira vez, `iniciado_em` é registrado
 - [ ] Quando um cartão é movido para `FEITO` pela primeira vez, `concluido_em` é registrado
@@ -315,7 +318,98 @@
 
 ---
 
-### EP-04: Colaboração
+### EP-04: Gestão de Raias
+
+---
+
+#### US-19 — Criar Raia
+
+**Como** Carlos,  
+**Quero** criar uma nova raia em um quadro,  
+**Para que** eu possa estruturar visualmente o trabalho por responsável.
+
+**Critérios de Aceitação:**
+
+- [ ] Apenas membros do quadro podem criar raias
+- [ ] O nome da raia segue regras de texto (5–30 chars, inicial maiúscula)
+- [ ] A raia é criada com uma ordem de exibição (`ordem_exibicao`)
+- [ ] Não é permitido nome de raia duplicado no mesmo quadro
+
+**Endpoint:** `POST /quadros/{codigo_quadro}/raias`  
+**Status HTTP:** `201 Created` | `409 Conflict` | `422 Unprocessable Entity`
+
+---
+
+#### US-20 — Visualizar Raias do Quadro
+
+**Como** Marina,  
+**Quero** visualizar as raias de um quadro,  
+**Para que** eu possa entender a estrutura horizontal de trabalho.
+
+**Critérios de Aceitação:**
+
+- [ ] O endpoint retorna as raias ordenadas por `ordem_exibicao`
+- [ ] Cada raia exibe: identificador, nome e responsável associado
+- [ ] As raias retornadas pertencem somente ao quadro informado
+
+**Endpoint:** `GET /quadros/{codigo_quadro}/raias`  
+**Status HTTP:** `200 OK` | `404 Not Found`
+
+---
+
+#### US-21 — Editar Raia
+
+**Como** Carlos,  
+**Quero** editar os dados de uma raia,  
+**Para que** eu possa ajustar nome e organização das raias ao longo do projeto.
+
+**Critérios de Aceitação:**
+
+- [ ] É possível alterar o nome da raia
+- [ ] É possível alterar a ordem de exibição da raia
+- [ ] Não é permitido gerar conflito de nome no mesmo quadro
+
+**Endpoint:** `PUT /raias/{id_raia}`  
+**Status HTTP:** `200 OK` | `404 Not Found` | `409 Conflict` | `422 Unprocessable Entity`
+
+---
+
+#### US-22 — Excluir Raia
+
+**Como** Carlos,  
+**Quero** excluir uma raia que não será mais usada,  
+**Para que** o quadro permaneça organizado.
+
+**Critérios de Aceitação:**
+
+- [ ] A raia só pode ser excluída se não houver cartões vinculados a ela
+- [ ] Em caso de cartões vinculados, o sistema retorna erro orientando a realocação prévia
+- [ ] A exclusão remove apenas a raia selecionada
+
+**Endpoint:** `DELETE /raias/{id_raia}`  
+**Status HTTP:** `204 No Content` | `404 Not Found` | `409 Conflict`
+
+---
+
+#### US-23 — Mover Cartão Entre Raias
+
+**Como** Marina,  
+**Quero** mover um cartão para outra raia,  
+**Para que** eu possa reatribuir trabalho entre responsáveis mantendo o histórico do cartão.
+
+**Critérios de Aceitação:**
+
+- [ ] O movimento entre raias ocorre por drag-and-drop vertical
+- [ ] O movimento entre raias não altera automaticamente a coluna do cartão
+- [ ] O cartão passa a refletir a nova raia e o novo responsável associado
+- [ ] O sistema valida que a raia de destino pertence ao mesmo quadro do cartão
+
+**Endpoint:** `PATCH /cartoes/{codigo}/mover-raia?codigo_quadro={codigo_quadro}`  
+**Status HTTP:** `200 OK` | `404 Not Found` | `422 Unprocessable Entity`
+
+---
+
+### EP-05: Colaboração
 
 ---
 
@@ -374,23 +468,26 @@
 
 ---
 
-### EP-05: Métricas e Análise
+### EP-06: Métricas e Análise
 
 ---
 
-#### US-18 — Visualizar Métricas de Ciclo de Vida
+#### US-18 — Visualizar Métricas de Fluxo
 
 **Como** Carlos,  
-**Quero** ver métricas de tempo de cada cartão concluído,  
+**Quero** ver métricas de fluxo do quadro com recorte temporal,  
 **Para que** eu possa identificar gargalos e melhorar o processo da equipe.
 
 **Critérios de Aceitação:**
 
-- [ ] O endpoint de métricas retorna, por cartão concluído: lead time e cycle time
+- [ ] O endpoint de métricas retorna: lead time, cycle time, throughput e WIP atual
 - [ ] Lead time = `concluido_em − criado_em`
 - [ ] Cycle time = `concluido_em − iniciado_em`
+- [ ] Throughput 7d = quantidade de cartões com `concluido_em` nos últimos 7 dias (janela móvel)
+- [ ] Throughput diário médio = `Throughput 7d / 7`
+- [ ] WIP atual = quantidade de cartões na coluna `FAZENDO`
 - [ ] Apenas cartões que já passaram por `FAZENDO` possuem cycle time definido
-- [ ] Cartões ainda não concluídos não aparecem nas métricas
+- [ ] Cartões ainda não concluídos não entram no cálculo de lead time, cycle time e throughput
 
 **Endpoint:** `GET /cartoes/quadro/{codigo_quadro}/metricas`  
 **Status HTTP:** `200 OK`
@@ -415,10 +512,15 @@
 | US-12    | EP-03 | `/cartoes/{codigo}/mover`                                | PATCH    |
 | US-13    | EP-03 | `/cartoes/{codigo}`                                      | PUT      |
 | US-14    | EP-03 | `/cartoes/{codigo}`                                      | DELETE   |
-| US-15    | EP-04 | `/quadros/{codigo}/membros`                              | POST     |
-| US-16    | EP-04 | `/quadros/{codigo}/membros`                              | GET      |
-| US-17    | EP-04 | `/quadros/{codigo}/membros/{email_usuario}`              | DELETE   |
-| US-18    | EP-05 | `/cartoes/quadro/{codigo_quadro}/metricas`               | GET      |
+| US-15    | EP-05 | `/quadros/{codigo}/membros`                              | POST     |
+| US-16    | EP-05 | `/quadros/{codigo}/membros`                              | GET      |
+| US-17    | EP-05 | `/quadros/{codigo}/membros/{email_usuario}`              | DELETE   |
+| US-18    | EP-06 | `/cartoes/quadro/{codigo_quadro}/metricas`               | GET      |
+| US-19    | EP-04 | `/quadros/{codigo_quadro}/raias`                         | POST     |
+| US-20    | EP-04 | `/quadros/{codigo_quadro}/raias`                         | GET      |
+| US-21    | EP-04 | `/raias/{id_raia}`                                       | PUT      |
+| US-22    | EP-04 | `/raias/{id_raia}`                                       | DELETE   |
+| US-23    | EP-04 | `/cartoes/{codigo}/mover-raia`                           | PATCH    |
 
 ---
 
@@ -427,8 +529,8 @@
 | Prioridade | Histórias                                        |
 |:----------:|--------------------------------------------------|
 | **Must Have** | US-01, US-02, US-06, US-10, US-11, US-12     |
-| **Should Have** | US-03, US-04, US-07, US-08, US-13, US-14, US-15, US-16 |
-| **Could Have** | US-05, US-17, US-18                          |
+| **Should Have** | US-03, US-04, US-07, US-08, US-13, US-14, US-15, US-16, US-19, US-20, US-23 |
+| **Could Have** | US-05, US-17, US-18, US-21, US-22           |
 | **Won't Have (v1)** | Notificações, exportação, comentários   |
 
 
