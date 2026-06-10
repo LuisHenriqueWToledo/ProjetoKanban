@@ -10,7 +10,7 @@
 
 ## 1. Visão Geral
 
-O banco de dados do Kanban Web é composto por **4 tabelas** que armazenam usuários, projetos, membros e tarefas. O arquivo físico é `kanban_web/kanban.db`, criado automaticamente na primeira execução da aplicação.
+O banco de dados do Kanban Web é composto por **5 tabelas** que armazenam usuários, projetos, membros, raias e tarefas. O arquivo físico é `kanban_web/kanban.db`, criado automaticamente na primeira execução da aplicação.
 
 ---
 
@@ -31,16 +31,30 @@ O banco de dados do Kanban Web é composto por **4 tabelas** que armazenam usuá
          │                                    │
          │ N                                  │ N
 ┌────────┴────────────────┐      ┌────────────┴─────────────────────────┐
-│    QUADRO_MEMBROS       │      │              CARTOES                  │
+│    QUADRO_MEMBROS       │      │               RAIAS                   │
 │─────────────────────────│      │──────────────────────────────────────│
-│ PK id             INT   │      │ PK,FK codigo        VARCHAR(4)       │
-│ FK codigo_quadro  VARCHAR│     │ PK,FK codigo_quadro VARCHAR(4) → quadros.codigo │
+│ PK id             INT   │      │ PK id_raia          INTEGER          │
+│ FK codigo_quadro  VARCHAR│     │ FK codigo_quadro    VARCHAR(4)       │
 │ FK email_usuario  VARCHAR│     │    nome             VARCHAR          │
-│    papel          VARCHAR│     │    descricao        VARCHAR          │
-│                         │      │    responsavel      VARCHAR          │
-│ UNIQUE(codigo_quadro,   │      │    prioridade       VARCHAR          │
-│        email_usuario)   │      │    data_limite      VARCHAR (nullable)│
-└─────────────────────────┘      │    coluna           VARCHAR          │
+│    papel          VARCHAR│     │    responsavel      VARCHAR          │
+│                         │      │    ordem_exibicao   INTEGER          │
+│ UNIQUE(codigo_quadro,   │      │ UNIQUE(codigo_quadro, nome)          │
+│        email_usuario)   │      └────────────┬─────────────────────────┘
+└─────────────────────────┘                   │ 1
+                                              │
+                                              │ N
+                                 ┌────────────┴─────────────────────────┐
+                                 │              CARTOES                  │
+                                 │──────────────────────────────────────│
+                                 │ PK,FK codigo        VARCHAR(4)       │
+                                 │ PK,FK codigo_quadro VARCHAR(4)       │
+                                 │ FK id_raia          INTEGER           │
+                                 │    nome             VARCHAR          │
+                                 │    descricao        VARCHAR          │
+                                 │    responsavel      VARCHAR          │
+                                 │    prioridade       VARCHAR          │
+                                 │    data_limite      VARCHAR (nullable)│
+                                 │    coluna           VARCHAR          │
                                  │    criado_em        DATETIME         │
                                  │    iniciado_em      DATETIME (nullable)│
                                  │    concluido_em     DATETIME (nullable)│
@@ -171,7 +185,46 @@ papel         = "MEMBRO"
 
 ---
 
-### 3.4 Tabela `cartoes`
+### 3.4 Tabela `raias`
+
+**Propósito:** Organizar horizontalmente o quadro por responsável (swimlanes).
+
+| Coluna          | Tipo       | Restrição                                     | Descrição                                               |
+|-----------------|------------|-----------------------------------------------|---------------------------------------------------------|
+| `id_raia`       | INTEGER    | PRIMARY KEY, AUTOINCREMENT                    | Identificador único da raia                             |
+| `codigo_quadro` | VARCHAR(4) | NOT NULL, FK → quadros.codigo                 | Quadro ao qual a raia pertence                          |
+| `nome`          | VARCHAR    | NOT NULL                                      | Nome da raia                                            |
+| `responsavel`   | VARCHAR    | NOT NULL                                      | Responsável associado à raia                            |
+| `ordem_exibicao`| INTEGER    | NOT NULL, DEFAULT 0                           | Ordem visual da raia no quadro                          |
+
+**Constraint de unicidade:** Não pode existir nome de raia duplicado no mesmo quadro.
+
+**DDL:**
+```sql
+CREATE TABLE raias (
+    id_raia         INTEGER    NOT NULL PRIMARY KEY AUTOINCREMENT,
+    codigo_quadro   VARCHAR(4) NOT NULL,
+    nome            VARCHAR    NOT NULL,
+    responsavel     VARCHAR    NOT NULL,
+    ordem_exibicao  INTEGER    NOT NULL DEFAULT 0,
+    FOREIGN KEY (codigo_quadro) REFERENCES quadros(codigo),
+    CONSTRAINT uq_raia_nome_no_quadro UNIQUE (codigo_quadro, nome)
+);
+CREATE INDEX ix_raias_codigo_quadro ON raias (codigo_quadro);
+```
+
+**Exemplo de Registro:**
+```
+id_raia        = 3
+codigo_quadro  = "AB12"
+nome           = "Pedro Alves"
+responsavel    = "Pedro Alves"
+ordem_exibicao = 1
+```
+
+---
+
+### 3.5 Tabela `cartoes`
 
 **Propósito:** Armazenar as tarefas (cartões) associadas a um quadro, com seu estado no fluxo Kanban e carimbos de tempo de ciclo.
 
@@ -179,6 +232,7 @@ papel         = "MEMBRO"
 |----------------|------------|------------------------------------|--------------------------------------------------------|
 | `codigo`       | VARCHAR(4) | PK (composta com codigo_quadro), INDEX | Código do cartão no formato LLDD               |
 | `codigo_quadro`| VARCHAR(4) | PK (composta), FK → quadros.codigo | Quadro ao qual o cartão pertence                       |
+| `id_raia`      | INTEGER    | NOT NULL, FK → raias.id_raia        | Raia horizontal à qual o cartão pertence               |
 | `nome`         | VARCHAR    | NOT NULL                           | Título da tarefa                                       |
 | `descricao`    | VARCHAR    | NOT NULL                           | Detalhamento da tarefa                                 |
 | `responsavel`  | VARCHAR    | NOT NULL                           | Nome do membro responsável pela tarefa                 |
@@ -200,6 +254,7 @@ papel         = "MEMBRO"
 CREATE TABLE cartoes (
     codigo          VARCHAR(4) NOT NULL,
     codigo_quadro   VARCHAR(4) NOT NULL,
+    id_raia         INTEGER    NOT NULL,
     nome            VARCHAR    NOT NULL,
     descricao       VARCHAR    NOT NULL,
     responsavel     VARCHAR    NOT NULL,
@@ -210,7 +265,8 @@ CREATE TABLE cartoes (
     iniciado_em     DATETIME,
     concluido_em    DATETIME,
     PRIMARY KEY (codigo, codigo_quadro),
-    FOREIGN KEY (codigo_quadro) REFERENCES quadros(codigo)
+    FOREIGN KEY (codigo_quadro) REFERENCES quadros(codigo),
+    FOREIGN KEY (id_raia) REFERENCES raias(id_raia)
 );
 CREATE INDEX ix_cartoes_codigo ON cartoes (codigo);
 ```
@@ -221,6 +277,7 @@ CREATE INDEX ix_cartoes_codigo ON cartoes (codigo);
 ```
 codigo        = "CD34"
 codigo_quadro = "AB12"
+id_raia       = 3
 nome          = "Implementar API"
 descricao     = "Endpoints REST da aplicação"
 responsavel   = "Pedro Alves"
@@ -240,7 +297,9 @@ concluido_em  = NULL
 CONTAS ||──o< QUADROS          (uma conta possui zero ou muitos quadros)
 CONTAS ||──o< QUADRO_MEMBROS   (uma conta pode ser membro de zero ou muitos quadros)
 QUADROS ||──o< QUADRO_MEMBROS  (um quadro pode ter zero ou muitos membros)
+QUADROS ||──o< RAIAS           (um quadro possui zero ou muitas raias)
 QUADROS ||──o< CARTOES         (um quadro possui zero ou muitos cartões)
+RAIAS ||──o< CARTOES           (uma raia possui zero ou muitos cartões)
 ```
 
 ---
@@ -251,6 +310,7 @@ QUADROS ||──o< CARTOES         (um quadro possui zero ou muitos cartões)
 |-----------------|-------------------------------|--------|--------------------------------------------------|
 | `contas`        | `ix_contas_email`             | B-Tree | Busca de conta por e-mail (login, FK lookup)     |
 | `quadros`       | `ix_quadros_codigo`           | B-Tree | Busca de quadro por código (FK lookup, GET)      |
+| `raias`         | `ix_raias_codigo_quadro`      | B-Tree | Listagem de raias por quadro                      |
 | `cartoes`       | `ix_cartoes_codigo`           | B-Tree | Busca de cartão por código                       |
 | `quadro_membros`| `uq_quadro_membro` (UNIQUE)   | B-Tree | Impede duplicidade; implícito em UNIQUE constraint |
 
@@ -267,8 +327,12 @@ QUADROS ||──o< CARTOES         (um quadro possui zero ou muitos cartões)
 | `quadro_membros`| FK `codigo_quadro → quadros.codigo` | FK  | Integridade referencial; cascata de delete                   |
 | `quadro_membros`| FK `email_usuario → contas.email`   | FK  | Integridade referencial; cascata de delete                   |
 | `quadro_membros`| UNIQUE `(codigo_quadro, email_usuario)` | UNIQUE | Impede membro duplicado no mesmo quadro             |
+| `raias`         | PK `id_raia`                   | PK        | Identificador único da raia                                   |
+| `raias`         | FK `codigo_quadro → quadros.codigo` | FK     | Integridade referencial; cascata de delete                   |
+| `raias`         | UNIQUE `(codigo_quadro, nome)` | UNIQUE    | Impede nome de raia duplicado no mesmo quadro                |
 | `cartoes`       | PK `(codigo, codigo_quadro)`  | PK (composta) | Código único por quadro                              |
 | `cartoes`       | FK `codigo_quadro → quadros.codigo` | FK  | Integridade referencial; cascata de delete                   |
+| `cartoes`       | FK `id_raia → raias.id_raia`  | FK        | Garante pertencimento do cartão a uma raia válida            |
 
 ---
 
@@ -296,6 +360,7 @@ alembic upgrade head
 | Cenário                                  | Estratégia                                              |
 |------------------------------------------|---------------------------------------------------------|
 | Listagem de cartões por quadro           | Índice em `codigo` + filtro por `codigo_quadro` (PK)    |
+| Listagem de cartões por raia             | Índice de `raias.codigo_quadro` + FK `cartoes.id_raia`   |
 | Listagem de quadros do usuário           | Query de união (como dono) + subquery (como membro)     |
 | Verificação WIP ao mover cartão          | `COUNT(*)` filtrado por `codigo_quadro` e `coluna`      |
 | Recalcular status do quadro              | `SELECT coluna FROM cartoes WHERE codigo_quadro = ?`    |

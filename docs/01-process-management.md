@@ -44,6 +44,22 @@ O quadro possui quatro colunas fixas, representando o ciclo de vida de cada tare
 | `EM TESTE` | Tarefas concluídas em desenvolvimento, aguardando revisão| Amarelo / Âmbar   |
 | `FEITO`    | Tarefas completamente revisadas e aceitas                | Verde             |
 
+### 2.2.1 Raias do Quadro (Swimlanes)
+
+Além das colunas, o quadro de cartões é organizado em **raias horizontais por responsável**. Cada raia agrupa as tarefas de uma pessoa e deixa explícita a distribuição de trabalho da equipe.
+
+Propósito estrutural da raia:
+
+- Tornar visível "quem está com o quê" sem perder o fluxo de colunas
+- Facilitar balanceamento de carga entre membros
+- Permitir reatribuição visual de cartões por movimentação entre raias
+
+Regras:
+
+- Cada cartão pertence a exatamente uma raia do quadro
+- Raias são gerenciáveis por CRUD (criar, listar, editar, excluir)
+- Mover cartão entre raias altera o responsável, mantendo o histórico temporal do cartão
+
 ### 2.3 Status Derivado do Quadro
 
 O status do quadro é **calculado automaticamente** pelo sistema sempre que um cartão é movido ou removido, com base nas colunas dos seus cartões:
@@ -76,6 +92,7 @@ Valores permitidos de WIP: **5**, **10**, **15**, **20**.
 | `descricao`    | 5–30 chars, inicial maiúscula      | Sim         | Detalhamento da tarefa                            |
 | `responsavel`  | Nome de um membro do quadro        | Sim         | Pessoa responsável pela execução                  |
 | `prioridade`   | `BAIXA`, `MEDIA`, `ALTA`           | Sim         | Nível de urgência do cartão                       |
+| `raia`         | Identificador de raia              | Sim         | Raia horizontal (por responsável) à qual o cartão pertence |
 | `data_limite`  | Date (YYYY-MM-DD)                  | Não         | Prazo máximo para conclusão                       |
 | `coluna`       | `A FAZER`, `FAZENDO`, `EM TESTE`, `FEITO` | Sim  | Estágio atual no fluxo                            |
 | `criado_em`    | DateTime UTC                       | Auto        | Momento em que o cartão foi criado                |
@@ -147,14 +164,22 @@ A FAZER ──── mover ──▶ FAZENDO ──── mover ──▶ EM TES
 ### 5.3 Gestão de Tarefas (Cartões)
 
 1. O usuário clica em um quadro para abrí-lo.
-2. Visualiza o **Kanban de Cartões** com as quatro colunas de tarefa.
+2. Visualiza o **Kanban de Cartões** em matriz: colunas (fluxo) x raias (responsáveis).
 3. Clica em **+ Novo Cartão** para adicionar uma tarefa.
-4. Preenche código, nome, descrição, responsável, prioridade e data limite.
-5. Move o cartão arrastando-o (drag-and-drop) entre as colunas.
-6. O sistema verifica o limite WIP antes de aceitar o movimento.
-7. O cartão pode ser editado ou excluído em qualquer momento.
+4. Preenche código, nome, descrição, responsável, prioridade, raia e data limite.
+5. Move o cartão arrastando-o entre as colunas para atualizar estágio de fluxo.
+6. Move o cartão entre raias para reatribuir trabalho entre responsáveis.
+7. O sistema verifica o limite WIP antes de aceitar movimento de coluna.
+8. O cartão pode ser editado ou excluído em qualquer momento.
 
-### 5.4 Colaboração
+### 5.4 Gestão de Raias
+
+1. Membros do quadro criam raias para representar responsáveis ativos.
+2. Raias são exibidas em ordem configurável (`ordem_exibicao`).
+3. A exclusão de raia exige realocação prévia dos cartões vinculados.
+4. Movimentação vertical de cartão altera raia e responsável associado.
+
+### 5.5 Colaboração
 
 1. O dono abre o painel **Membros** (ícone 👥 na barra de navegação).
 2. Digita o e-mail de um usuário cadastrado e clica em **Convidar**.
@@ -177,17 +202,20 @@ Todas as regras são validadas pelo backend (Pydantic + SQLAlchemy) independente
 | `limite_wip`| Valor em {5, 10, 15, 20}                                             |
 | `prioridade`| Valor em {`BAIXA`, `MEDIA`, `ALTA`}                                  |
 | `coluna`    | Valor em {`A FAZER`, `FAZENDO`, `EM TESTE`, `FEITO`}                 |
+| `raia`      | Deve referenciar uma raia existente do mesmo quadro                   |
 
 ---
 
-## 7. Métricas de Fluxo (Cycle Time)
+## 7. Métricas de Fluxo
 
-O sistema registra automaticamente três marcos temporais para cada cartão, permitindo o cálculo de métricas de desempenho do processo:
+O sistema registra automaticamente marcos temporais e estado atual para calcular métricas de desempenho do processo:
 
 | Métrica            | Cálculo                                  | Significado                                       |
 |--------------------|------------------------------------------|---------------------------------------------------|
 | **Lead Time**      | `concluido_em − criado_em`               | Tempo total desde criação até conclusão           |
 | **Cycle Time**     | `concluido_em − iniciado_em`             | Tempo efetivo de execução (sem espera inicial)    |
+| **Throughput 7d**  | `qtd(concluido_em nos últimos 7 dias)`   | Taxa de entrega recente da equipe                 |
+| **WIP Atual**      | `qtd(cartões em FAZENDO)`                | Trabalho em progresso no instante da consulta     |
 | **Tempo em espera**| `iniciado_em − criado_em`                | Quanto tempo o cartão ficou aguardando início     |
 
 Esses dados são expostos pelo endpoint `GET /cartoes/quadro/{codigo_quadro}/metricas`.

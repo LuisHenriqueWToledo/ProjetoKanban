@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from typing import List
-from datetime import datetime, timezone
+from datetime import datetime, timedelta
 from database import get_db
 import models
 import schemas
@@ -36,6 +36,13 @@ def criar_cartao(payload: schemas.CartaoCreate, db: Session = Depends(get_db)):
     if not quadro:
         raise HTTPException(status_code=404, detail="Quadro não encontrado")
 
+    raia = db.query(models.Raia).filter(
+        models.Raia.id_raia == payload.id_raia,
+        models.Raia.codigo_quadro == payload.codigo_quadro,
+    ).first()
+    if not raia:
+        raise HTTPException(status_code=404, detail="Raia nao encontrada para o quadro informado")
+
     existente = db.query(models.Cartao).filter(
         models.Cartao.codigo == payload.codigo,
         models.Cartao.codigo_quadro == payload.codigo_quadro,
@@ -46,9 +53,10 @@ def criar_cartao(payload: schemas.CartaoCreate, db: Session = Depends(get_db)):
     cartao = models.Cartao(
         codigo=payload.codigo,
         codigo_quadro=payload.codigo_quadro,
+        id_raia=payload.id_raia,
         nome=payload.nome,
         descricao=payload.descricao,
-        responsavel=payload.responsavel,
+        responsavel=raia.responsavel,
         prioridade=payload.prioridade.value,
         data_limite=payload.data_limite,
         coluna=payload.coluna.value,
@@ -100,7 +108,7 @@ def mover_cartao(codigo: str, payload: schemas.CartaoMover, codigo_quadro: str =
     if qtd_coluna >= quadro.limite_wip:
         raise HTTPException(status_code=409, detail=f"Limite WIP atingido na coluna '{payload.coluna.value}'")
 
-    agora = datetime.now(timezone.utc)
+    agora = datetime.utcnow()
     nova_coluna = payload.coluna.value
 
     # Registrar timestamps de ciclo
@@ -113,6 +121,34 @@ def mover_cartao(codigo: str, payload: schemas.CartaoMover, codigo_quadro: str =
     db.commit()
     db.refresh(cartao)
     _recalcular_status_quadro(cartao.codigo_quadro, db)
+    return cartao
+
+
+@router.patch("/{codigo}/mover-raia", response_model=schemas.CartaoOut)
+def mover_cartao_raia(
+    codigo: str,
+    payload: schemas.CartaoMoverRaia,
+    codigo_quadro: str = Query(...),
+    db: Session = Depends(get_db),
+):
+    cartao = db.query(models.Cartao).filter(
+        models.Cartao.codigo == codigo,
+        models.Cartao.codigo_quadro == codigo_quadro,
+    ).first()
+    if not cartao:
+        raise HTTPException(status_code=404, detail="Cartao nao encontrado")
+
+    raia_destino = db.query(models.Raia).filter(
+        models.Raia.id_raia == payload.id_raia,
+        models.Raia.codigo_quadro == codigo_quadro,
+    ).first()
+    if not raia_destino:
+        raise HTTPException(status_code=404, detail="Raia de destino nao encontrada no quadro")
+
+    cartao.id_raia = raia_destino.id_raia
+    cartao.responsavel = raia_destino.responsavel
+    db.commit()
+    db.refresh(cartao)
     return cartao
 
 
@@ -152,7 +188,12 @@ def metricas(codigo_quadro: str, db: Session = Depends(get_db)):
     todos = db.query(models.Cartao).filter(models.Cartao.codigo_quadro == codigo_quadro).all()
 
     wip_atual = sum(1 for c in todos if c.coluna == "FAZENDO")
-    throughput = sum(1 for c in todos if c.coluna == "FEITO")
+    agora = datetime.utcnow()
+    inicio_janela = agora - timedelta(days=7)
+    throughput_7d = sum(
+        1 for c in todos
+        if c.concluido_em is not None and inicio_janela <= c.concluido_em <= agora
+    )
 
     concluidos = [c for c in todos if c.criado_em and c.concluido_em]
     lead_time = None
@@ -166,7 +207,8 @@ def metricas(codigo_quadro: str, db: Session = Depends(get_db)):
 
     return schemas.MetricasOut(
         wip_atual=wip_atual,
-        throughput=throughput,
+        throughput_7d=throughput_7d,
+        throughput_dia_medio=throughput_7d / 7,
         lead_time_medio_dias=lead_time,
         cycle_time_medio_dias=cycle_time,
     )

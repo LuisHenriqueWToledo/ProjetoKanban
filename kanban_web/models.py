@@ -26,6 +26,7 @@ class Quadro(Base):
     email_dono = Column(String, ForeignKey("contas.email"), nullable=False)
 
     dono = relationship("Conta", back_populates="quadros")
+    raias = relationship("Raia", back_populates="quadro", cascade="all, delete-orphan")
     cartoes = relationship("Cartao", back_populates="quadro", cascade="all, delete-orphan")
     membros = relationship("QuadroMembro", back_populates="quadro", cascade="all, delete-orphan")
 
@@ -44,11 +45,27 @@ class QuadroMembro(Base):
     usuario = relationship("Conta", back_populates="membros")
 
 
+class Raia(Base):
+    __tablename__ = "raias"
+
+    id_raia = Column(Integer, primary_key=True, autoincrement=True)
+    codigo_quadro = Column(String(4), ForeignKey("quadros.codigo"), nullable=False, index=True)
+    nome = Column(String, nullable=False)
+    responsavel = Column(String, nullable=False)
+    ordem_exibicao = Column(Integer, nullable=False, default=0)
+
+    __table_args__ = (UniqueConstraint("codigo_quadro", "nome", name="uq_raia_nome_no_quadro"),)
+
+    quadro = relationship("Quadro", back_populates="raias")
+    cartoes = relationship("Cartao", back_populates="raia")
+
+
 class Cartao(Base):
     __tablename__ = "cartoes"
 
     codigo = Column(String(4), nullable=False, index=True)
     codigo_quadro = Column(String(4), ForeignKey("quadros.codigo"), nullable=False)
+    id_raia = Column(Integer, ForeignKey("raias.id_raia"), nullable=False)
     nome = Column(String, nullable=False)
     descricao = Column(String, nullable=False)
     responsavel = Column(String, nullable=False)
@@ -60,5 +77,6 @@ class Cartao(Base):
     concluido_em = Column(DateTime, nullable=True)
 
     quadro = relationship("Quadro", back_populates="cartoes")
+    raia = relationship("Raia", back_populates="cartoes")
 
     __table_args__ = (PrimaryKeyConstraint("codigo", "codigo_quadro"),)

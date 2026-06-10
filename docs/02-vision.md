@@ -19,6 +19,7 @@ Este documento descreve a visão do produto **Kanban Web**, definindo o problema
 |---------------|---------------------------------------------------------------------------|
 | **Kanban**    | Método visual de gestão de fluxo de trabalho originado na Toyota (1940s)  |
 | **WIP**       | Work-In-Progress — número máximo de tarefas simultâneas em uma coluna     |
+| **Raia**      | Segmentação horizontal do quadro, usada para agrupar cartões por responsável |
 | **Quadro**    | Instância de um projeto no sistema, contendo colunas e cartões            |
 | **Cartão**    | Unidade de trabalho (tarefa) representada visualmente no quadro           |
 | **Dono**      | Usuário que criou o quadro e possui permissões administrativas sobre ele  |
@@ -99,11 +100,12 @@ O sistema não depende de serviços de terceiros durante sua operação normal.
 | C-01 | Cadastro e autenticação de usuários       | Acesso seguro e personalizado ao sistema                    |
 | C-02 | Criação e gerenciamento de quadros Kanban | Organização visual de projetos com status automático        |
 | C-03 | Criação e movimentação de cartões         | Acompanhamento do fluxo de tarefas em tempo real            |
-| C-04 | Controle de limite WIP por coluna         | Prevenção de sobrecarga e gargalos no processo              |
-| C-05 | Colaboração por convite de membros        | Trabalho em equipe com controle de permissões               |
-| C-06 | Métricas de ciclo de vida (Lead/Cycle Time)| Análise de desempenho e identificação de melhorias         |
-| C-07 | Drag-and-drop de cartões e quadros        | Interação intuitiva e ágil para movimentação de itens       |
-| C-08 | Documentação interativa da API (Swagger)  | Facilidade de integração e teste por desenvolvedores        |
+| C-04 | Gestão de raias por responsável           | Visibilidade de carga de trabalho por membro                |
+| C-05 | Controle de limite WIP por coluna         | Prevenção de sobrecarga e gargalos no processo              |
+| C-06 | Colaboração por convite de membros        | Trabalho em equipe com controle de permissões               |
+| C-07 | Métricas de fluxo (Lead/Cycle/Throughput/WIP) | Análise de desempenho e identificação de melhorias      |
+| C-08 | Drag-and-drop de cartões e quadros        | Interação intuitiva e ágil para movimentação de itens       |
+| C-09 | Documentação interativa da API (Swagger)  | Facilidade de integração e teste por desenvolvedores        |
 
 ---
 
@@ -113,12 +115,14 @@ O sistema não depende de serviços de terceiros durante sua operação normal.
 
 - Autenticação por e-mail e senha (sem tokens JWT nesta versão)
 - CRUD completo de contas, quadros e cartões
+- CRUD de raias por quadro (swimlanes)
 - Sistema de papéis Dono/Membro por quadro
 - Convite e remoção de membros
 - Controle WIP configurável (5, 10, 15 ou 20 por coluna)
+- Movimentação de cartão entre raias no mesmo quadro
 - Status automático do quadro baseado nos cartões
 - Registro de timestamps de ciclo (`criado_em`, `iniciado_em`, `concluido_em`)
-- Endpoint de métricas por quadro
+- Endpoint de métricas por quadro com lead time, cycle time, throughput e WIP
 - Interface web responsiva (desktop e mobile)
 - Documentação da API via Swagger UI e ReDoc
 - Validação de domínio nos dados de entrada (backend e frontend)
@@ -148,11 +152,13 @@ O sistema não depende de serviços de terceiros durante sua operação normal.
 | RF-03| O usuário autenticado deve poder criar, visualizar e excluir quadros       |
 | RF-04| O sistema deve organizar quadros em colunas de status                     |
 | RF-05| O usuário deve poder criar, editar, mover e excluir cartões em quadros    |
-| RF-06| O sistema deve impor o limite WIP ao mover cartões                        |
-| RF-07| O dono do quadro deve poder convidar e remover membros                    |
-| RF-08| O sistema deve calcular e atualizar o status do quadro automaticamente    |
-| RF-09| O sistema deve registrar timestamps ao mover cartões para `FAZENDO`/`FEITO`|
-| RF-10| O sistema deve expor métricas de lead time e cycle time por quadro        |
+| RF-06| O usuário deve poder criar, listar, editar e excluir raias por quadro      |
+| RF-07| O sistema deve permitir mover cartão entre raias no mesmo quadro           |
+| RF-08| O sistema deve impor o limite WIP ao mover cartões entre colunas           |
+| RF-09| O dono do quadro deve poder convidar e remover membros                    |
+| RF-10| O sistema deve calcular e atualizar o status do quadro automaticamente    |
+| RF-11| O sistema deve registrar timestamps ao mover cartões para `FAZENDO`/`FEITO`|
+| RF-12| O sistema deve expor métricas de lead time, cycle time, throughput e WIP por quadro |
 
 ### 6.2 Requisitos Não Funcionais (Resumo)
 
@@ -187,7 +193,7 @@ O sistema não depende de serviços de terceiros durante sua operação normal.
 | Alta       | CRUD de cartões e movimentação          | Entrega de valor principal ao usuário              |
 | Alta       | Controle WIP                            | Diferencial essencial do método Kanban             |
 | Média      | Colaboração com membros                 | Habilita uso em equipe                             |
-| Média      | Métricas de ciclo de vida               | Agrega valor analítico ao produto                  |
+| Média      | Métricas de fluxo (Lead/Cycle/Throughput/WIP) | Agrega valor analítico ao produto           |
 | Baixa      | Documentação interativa da API          | Suporte ao desenvolvedor / avaliação acadêmica     |
 
 ---

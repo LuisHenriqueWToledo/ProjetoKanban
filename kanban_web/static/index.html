@@ -82,14 +82,19 @@
         <p class="text-xs text-gray-400 mt-1">5–30 chars, iniciar com maiúscula</p>
       </div>
       <div>
-        <select x-model="fCartao.responsavel"
+        <select x-model.number="fCartao.id_raia" @change="onRaiaChange()"
           class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400">
-          <option value="">-- Selecione o Responsável --</option>
-          <template x-for="m in membros" :key="m.email_usuario">
-            <option :value="m.nome || m.email_usuario" x-text="(m.nome || m.email_usuario) + (m.papel === 'DONO' ? ' 👑' : '')"></option>
+          <option :value="0">-- Selecione a Raia --</option>
+          <template x-for="r in raias" :key="r.id_raia">
+            <option :value="r.id_raia" x-text="r.nome + ' (' + r.responsavel + ')'" ></option>
           </template>
         </select>
-        <p class="text-xs text-gray-400 mt-1">Membro do projeto</p>
+        <p class="text-xs text-gray-400 mt-1">Raia horizontal do cartao</p>
+      </div>
+      <div>
+        <input x-model="fCartao.responsavel" readonly
+          class="w-full bg-gray-50 border rounded-lg px-3 py-2 text-sm text-gray-500" />
+        <p class="text-xs text-gray-400 mt-1">Responsavel sincronizado com a raia selecionada</p>
       </div>
       <select x-model="fCartao.prioridade"
         class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400">
@@ -176,6 +181,27 @@
           </template>
           <p x-show="membros.length === 0" class="text-xs text-gray-400 text-center py-2">Nenhum membro ainda</p>
         </div>
+      </div>
+    </div>
+
+    <!-- Formulário de Raia -->
+    <div x-show="modal.type === 'raia'" class="space-y-3">
+      <div>
+        <input x-model="fRaia.nome" placeholder="Nome da raia"
+          class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+      </div>
+      <div>
+        <select x-model="fRaia.responsavel"
+          class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400">
+          <option value="">-- Selecione o Responsavel --</option>
+          <template x-for="m in membros" :key="m.email_usuario">
+            <option :value="m.nome || m.email_usuario" x-text="m.nome || m.email_usuario"></option>
+          </template>
+        </select>
+      </div>
+      <div>
+        <input x-model.number="fRaia.ordem_exibicao" type="number" min="0"
+          class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
       </div>
     </div>
 
@@ -358,8 +384,12 @@
         <p class="text-xs text-gray-500 mt-1">WIP Atual</p>
       </div>
       <div class="bg-white rounded-xl shadow px-5 py-3 text-center">
-        <p class="text-2xl font-bold text-green-600" x-text="metricas.throughput"></p>
-        <p class="text-xs text-gray-500 mt-1">Throughput</p>
+        <p class="text-2xl font-bold text-green-600" x-text="metricas.throughput_7d"></p>
+        <p class="text-xs text-gray-500 mt-1">Throughput (7d)</p>
+      </div>
+      <div class="bg-white rounded-xl shadow px-5 py-3 text-center">
+        <p class="text-2xl font-bold text-emerald-600" x-text="metricas.throughput_dia_medio.toFixed(2)"></p>
+        <p class="text-xs text-gray-500 mt-1">Throughput/dia</p>
       </div>
       <div class="bg-white rounded-xl shadow px-5 py-3 text-center">
         <p class="text-2xl font-bold text-yellow-500" x-text="metricas.lead_time_medio_dias !== null ? metricas.lead_time_medio_dias.toFixed(1) + 'd' : '—'"></p>
@@ -370,59 +400,82 @@
         <p class="text-xs text-gray-500 mt-1">Cycle Time</p>
       </div>
       <div class="ml-auto">
+        <button @click="abrirModalRaia()" class="bg-slate-600 hover:bg-slate-700 text-white px-4 py-2 rounded-lg text-sm mr-2">
+          + Nova Raia
+        </button>
         <button @click="abrirModalCartao()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm">
           + Novo Cartão
         </button>
       </div>
     </div>
 
-    <!-- Colunas -->
-    <div class="grid grid-cols-4 gap-5">
-      <template x-for="col in colunas" :key="col.id">
-        <div class="bg-gray-50 rounded-2xl p-4 kanban-col drop-zone"
-          :id="'col-' + col.id"
-          @dragover.prevent="$el.classList.add('over')"
-          @dragleave="$el.classList.remove('over')"
-          @drop.prevent="onDrop($event, col.id)">
-
+    <!-- Matriz de Raias x Colunas -->
+    <div class="space-y-4">
+      <template x-for="r in raiasOrdenadas()" :key="r.id_raia">
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
           <div class="flex items-center justify-between mb-3">
-            <h3 class="font-bold text-gray-700" x-text="col.label"></h3>
-            <span class="text-xs bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full"
-              x-text="cartoesPorColuna(col.id).length"></span>
+            <div>
+              <h3 class="font-bold text-gray-800" x-text="r.nome"></h3>
+              <p class="text-xs text-gray-500" x-text="'Responsavel: ' + r.responsavel"></p>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="text-xs bg-slate-100 text-slate-700 px-2 py-0.5 rounded-full" x-text="'Ordem: ' + r.ordem_exibicao"></span>
+              <button @click="abrirModalEditarRaia(r)" class="text-indigo-300 hover:text-indigo-500 text-sm" title="Editar raia">✏️</button>
+              <button @click="confirmarExcluirRaia(r)" class="text-red-300 hover:text-red-500 text-sm" title="Excluir raia">✕</button>
+            </div>
           </div>
 
-          <template x-for="c in cartoesPorColuna(col.id)" :key="c.codigo">
-            <div class="bg-white rounded-xl shadow-sm p-4 mb-3 border border-gray-100 card-drag"
-              draggable="true"
-              @dragstart="dragStart($event, c.codigo)">
+          <div class="grid grid-cols-4 gap-4">
+            <template x-for="col in colunas" :key="col.id + '-' + r.id_raia">
+              <div class="bg-gray-50 rounded-xl p-3 drop-zone"
+                @dragover.prevent="$el.classList.add('over')"
+                @dragleave="$el.classList.remove('over')"
+                @drop.prevent="onDrop($event, col.id, r.id_raia)">
 
-              <div class="flex items-start justify-between">
-                <p class="font-semibold text-gray-800 text-sm" x-text="c.nome"></p>
-                <div class="flex items-center gap-1 ml-2 shrink-0">
-                  <button @click="abrirModalEditarCartao(c)" class="text-indigo-300 hover:text-indigo-500 text-sm" title="Editar">✏️</button>
-                  <button @click="confirmarExcluirCartao(c)" class="text-red-300 hover:text-red-500 text-sm" title="Excluir">✕</button>
+                <div class="flex items-center justify-between mb-2">
+                  <p class="text-xs font-bold text-gray-600" x-text="col.label"></p>
+                  <span class="text-xs bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full"
+                    x-text="cartoesPorCelula(col.id, r.id_raia).length"></span>
+                </div>
+
+                <template x-for="c in cartoesPorCelula(col.id, r.id_raia)" :key="c.codigo">
+                  <div class="bg-white rounded-lg shadow-sm p-3 mb-2 border border-gray-100 card-drag"
+                    draggable="true"
+                    @dragstart="dragStart($event, c.codigo)">
+                    <div class="flex items-start justify-between">
+                      <p class="font-semibold text-gray-800 text-sm" x-text="c.nome"></p>
+                      <div class="flex items-center gap-1 ml-2 shrink-0">
+                        <button @click="abrirModalEditarCartao(c)" class="text-indigo-300 hover:text-indigo-500 text-sm" title="Editar">✏️</button>
+                        <button @click="confirmarExcluirCartao(c)" class="text-red-300 hover:text-red-500 text-sm" title="Excluir">✕</button>
+                      </div>
+                    </div>
+                    <p class="text-xs text-gray-500 mt-1 line-clamp-2" x-text="c.descricao"></p>
+                    <div class="flex items-center justify-between mt-2">
+                      <span :class="{
+                          'bg-red-100 text-red-600': c.prioridade==='ALTA',
+                          'bg-yellow-100 text-yellow-600': c.prioridade==='MEDIA',
+                          'bg-green-100 text-green-600': c.prioridade==='BAIXA'
+                        }"
+                        class="text-xs px-2 py-0.5 rounded-full font-medium" x-text="c.prioridade"></span>
+                      <span class="text-xs text-gray-400" x-text="c.codigo"></span>
+                    </div>
+                  </div>
+                </template>
+
+                <div x-show="cartoesPorCelula(col.id, r.id_raia).length === 0"
+                  class="text-center text-gray-300 text-xs py-4 select-none">
+                  Solte aqui
                 </div>
               </div>
-              <p class="text-xs text-gray-500 mt-1 line-clamp-2" x-text="c.descricao"></p>
-              <div class="flex items-center justify-between mt-3">
-                <span class="text-xs text-gray-400" x-text="c.responsavel"></span>
-                <span :class="{
-                    'bg-red-100 text-red-600': c.prioridade==='ALTA',
-                    'bg-yellow-100 text-yellow-600': c.prioridade==='MEDIA',
-                    'bg-green-100 text-green-600': c.prioridade==='BAIXA'
-                  }"
-                  class="text-xs px-2 py-0.5 rounded-full font-medium" x-text="c.prioridade"></span>
-              </div>
-              <p x-show="c.data_limite" class="text-xs text-gray-400 mt-1">⏰ <span x-text="c.data_limite"></span></p>
-            </div>
-          </template>
-
-          <div x-show="cartoesPorColuna(col.id).length === 0"
-            class="text-center text-gray-300 text-xs py-8 select-none">
-            Arraste cartões aqui
+            </template>
           </div>
         </div>
       </template>
+
+      <div x-show="raias.length === 0"
+        class="text-center text-gray-400 text-sm py-10 border-2 border-dashed border-gray-300 rounded-2xl bg-white">
+        Nenhuma raia cadastrada. Clique em "+ Nova Raia" para iniciar.
+      </div>
     </div>
   </div>
 
@@ -441,7 +494,8 @@ function app() {
     quadros: [],
     quadroAtual: null,
     cartoes: [],
-    metricas: { wip_atual: 0, throughput: 0, lead_time_medio_dias: null, cycle_time_medio_dias: null },
+    raias: [],
+    metricas: { wip_atual: 0, throughput_7d: 0, throughput_dia_medio: 0, lead_time_medio_dias: null, cycle_time_medio_dias: null },
     colunasQuadro: [
       { id: 'A FAZER',      label: 'A Fazer',      icon: '📋', bg: 'bg-slate-100' },
       { id: 'EM ANDAMENTO', label: 'Em Andamento',  icon: '⚙️',  bg: 'bg-blue-50'  },
@@ -462,9 +516,11 @@ function app() {
     membros: [],
     // forms internos
     fQuadro: { codigo: '', nome: '', descricao: '', limite_wip: 10 },
-    fCartao: { codigo: '', nome: '', descricao: '', responsavel: '', prioridade: 'MEDIA', data_limite: '', coluna: 'A FAZER' },
+    fCartao: { codigo: '', id_raia: 0, nome: '', descricao: '', responsavel: '', prioridade: 'MEDIA', data_limite: '', coluna: 'A FAZER' },
+    fRaia: { id_raia: null, nome: '', responsavel: '', ordem_exibicao: 0 },
     fMembro: { email: '' },
     cartaoEditMode: false,
+    raiaEditMode: false,
     fPerfil: { nome: '', senha: '' },
     showSenhaPerfil: false,
 
@@ -654,6 +710,7 @@ function app() {
       await Promise.all([
         this.carregarCartoes(),
         this.carregarMetricas(),
+        this.carregarRaias(),
         this.carregarMembros(),
       ]);
     },
@@ -661,6 +718,7 @@ function app() {
     voltarLista() {
       this.quadroAtual = null;
       this.cartoes = [];
+      this.raias = [];
       this.membros = [];
       this.carregarQuadros();
     },
@@ -671,6 +729,102 @@ function app() {
       try {
         this.membros = await this.api('GET', `/quadros/${this.quadroAtual.codigo}/membros`);
       } catch(e) {}
+    },
+
+    async carregarRaias() {
+      if (!this.quadroAtual) return;
+      try {
+        this.raias = await this.api('GET', `/quadros/${this.quadroAtual.codigo}/raias`);
+      } catch(e) {
+        this.raias = [];
+      }
+    },
+
+    raiasOrdenadas() {
+      return [...this.raias].sort((a, b) => (a.ordem_exibicao - b.ordem_exibicao) || (a.id_raia - b.id_raia));
+    },
+
+    abrirModalRaia() {
+      this.raiaEditMode = false;
+      this.fRaia = { id_raia: null, nome: '', responsavel: '', ordem_exibicao: this.raias.length };
+      this.modalError = '';
+      this.modal = {
+        open: true,
+        type: 'raia',
+        title: 'Nova Raia',
+        btnLabel: 'Criar',
+        confirm: () => this.criarRaia(),
+      };
+    },
+
+    abrirModalEditarRaia(r) {
+      this.raiaEditMode = true;
+      this.fRaia = {
+        id_raia: r.id_raia,
+        nome: r.nome,
+        responsavel: r.responsavel,
+        ordem_exibicao: r.ordem_exibicao,
+      };
+      this.modalError = '';
+      this.modal = {
+        open: true,
+        type: 'raia',
+        title: 'Editar Raia',
+        btnLabel: 'Salvar',
+        confirm: () => this.editarRaia(),
+      };
+    },
+
+    async criarRaia() {
+      try {
+        await this.api('POST', `/quadros/${this.quadroAtual.codigo}/raias`, {
+          nome: this.fRaia.nome,
+          responsavel: this.fRaia.responsavel,
+          ordem_exibicao: parseInt(this.fRaia.ordem_exibicao || 0),
+        });
+        this.modal.open = false;
+        this.modalError = '';
+        await this.carregarRaias();
+        this.showToast('Raia criada!');
+      } catch (e) {
+        this.showModalError(e.message);
+      }
+    },
+
+    async editarRaia() {
+      try {
+        await this.api('PUT', `/raias/${this.fRaia.id_raia}`, {
+          nome: this.fRaia.nome,
+          responsavel: this.fRaia.responsavel,
+          ordem_exibicao: parseInt(this.fRaia.ordem_exibicao || 0),
+        });
+        this.modal.open = false;
+        this.modalError = '';
+        await Promise.all([this.carregarRaias(), this.carregarCartoes()]);
+        this.showToast('Raia atualizada!');
+      } catch (e) {
+        this.showModalError(e.message);
+      }
+    },
+
+    confirmarExcluirRaia(r) {
+      this.modal = {
+        open: true,
+        type: 'confirm',
+        title: 'Excluir raia',
+        msg: `Excluir a raia "${r.nome}"?`,
+        btnLabel: 'Excluir',
+        confirm: async () => {
+          try {
+            await this.api('DELETE', `/raias/${r.id_raia}`);
+            this.modal.open = false;
+            await this.carregarRaias();
+            this.showToast('Raia excluida.');
+          } catch (e) {
+            this.showToast(e.message, 'err');
+          }
+        },
+      };
     },
 
     abrirModalMembros() {
@@ -724,12 +878,21 @@ function app() {
       } catch(e) {}
     },
 
+    onRaiaChange() {
+      const raia = this.raias.find(r => r.id_raia === this.fCartao.id_raia);
+      this.fCartao.responsavel = raia ? raia.responsavel : '';
+    },
+
     cartoesPorColuna(col) {
       return this.cartoes.filter(c => c.coluna === col);
     },
 
+    cartoesPorCelula(coluna, idRaia) {
+      return this.cartoes.filter(c => c.coluna === coluna && c.id_raia === idRaia);
+    },
+
     abrirModalCartao() {
-      this.fCartao = { codigo: '', nome: '', descricao: '', responsavel: '', prioridade: 'MEDIA', data_limite: '', coluna: 'A FAZER' };
+      this.fCartao = { codigo: '', id_raia: 0, nome: '', descricao: '', responsavel: '', prioridade: 'MEDIA', data_limite: '', coluna: 'A FAZER' };
       this.cartaoEditMode = false;
       this.modalError = '';
       this.modal = {
@@ -744,6 +907,7 @@ function app() {
     abrirModalEditarCartao(c) {
       this.fCartao = {
         codigo: c.codigo,
+        id_raia: c.id_raia,
         nome: c.nome,
         descricao: c.descricao,
         responsavel: c.responsavel,
@@ -764,6 +928,7 @@ function app() {
 
     async editarCartao() {
       try {
+        const cartaoAtual = this.cartoes.find(c => c.codigo === this.fCartao.codigo);
         const payload = {
           nome: this.fCartao.nome,
           descricao: this.fCartao.descricao,
@@ -772,6 +937,11 @@ function app() {
           data_limite: this.fCartao.data_limite || null,
         };
         await this.api('PUT', `/cartoes/${this.fCartao.codigo}?codigo_quadro=${this.quadroAtual.codigo}`, payload);
+        if (cartaoAtual && cartaoAtual.id_raia !== this.fCartao.id_raia) {
+          await this.api('PATCH', `/cartoes/${this.fCartao.codigo}/mover-raia?codigo_quadro=${this.quadroAtual.codigo}`, {
+            id_raia: this.fCartao.id_raia,
+          });
+        }
         this.modal.open = false;
         this.modalError = '';
         await this.carregarCartoes();
@@ -781,6 +951,10 @@ function app() {
 
     async criarCartao() {
       try {
+        if (!this.fCartao.id_raia) {
+          this.showModalError('Selecione uma raia antes de criar o cartao.');
+          return;
+        }
         const payload = {
           ...this.fCartao,
           codigo_quadro: this.quadroAtual.codigo,
@@ -820,13 +994,20 @@ function app() {
       event.dataTransfer.effectAllowed = 'move';
     },
 
-    async onDrop(event, novaColuna) {
+    async onDrop(event, novaColuna, novaRaiaId) {
       event.currentTarget.classList.remove('over');
       if (!this.draggingCodigo) return;
       const cartao = this.cartoes.find(c => c.codigo === this.draggingCodigo);
-      if (!cartao || cartao.coluna === novaColuna) { this.draggingCodigo = null; return; }
+      if (!cartao) { this.draggingCodigo = null; return; }
       try {
-        await this.api('PATCH', `/cartoes/${this.draggingCodigo}/mover?codigo_quadro=${this.quadroAtual.codigo}`, { coluna: novaColuna });
+        if (cartao.coluna !== novaColuna) {
+          await this.api('PATCH', `/cartoes/${this.draggingCodigo}/mover?codigo_quadro=${this.quadroAtual.codigo}`, { coluna: novaColuna });
+        }
+        if (cartao.id_raia !== novaRaiaId) {
+          await this.api('PATCH', `/cartoes/${this.draggingCodigo}/mover-raia?codigo_quadro=${this.quadroAtual.codigo}`, {
+            id_raia: novaRaiaId,
+          });
+        }
         await this.carregarCartoes();
         await this.carregarMetricas();
       } catch(e) { this.showToast(e.message, 'err'); }
