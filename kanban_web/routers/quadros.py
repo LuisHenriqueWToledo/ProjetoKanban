@@ -52,6 +52,26 @@ def visualizar_quadro(codigo: str, db: Session = Depends(get_db)):
     return quadro
 
 
+@router.put("/{codigo}", response_model=schemas.QuadroOut)
+def atualizar_quadro(codigo: str, payload: schemas.QuadroUpdate, email_dono: str = Query(...), db: Session = Depends(get_db)):
+    quadro = db.query(models.Quadro).filter(models.Quadro.codigo == codigo).first()
+    if not quadro:
+        raise HTTPException(status_code=404, detail="Quadro não encontrado")
+    if quadro.email_dono != email_dono:
+        raise HTTPException(status_code=403, detail="Sem permissão para editar este quadro")
+
+    quantidade_cartoes = db.query(models.Cartao).filter(models.Cartao.codigo_quadro == codigo).count()
+    if quantidade_cartoes > payload.limite_wip:
+        raise HTTPException(status_code=409, detail="O limite WIP não pode ser menor que a quantidade atual de cartões")
+
+    quadro.nome = payload.nome
+    quadro.descricao = payload.descricao
+    quadro.limite_wip = payload.limite_wip
+    db.commit()
+    db.refresh(quadro)
+    return quadro
+
+
 @router.delete("/{codigo}", status_code=status.HTTP_204_NO_CONTENT)
 def excluir_quadro(codigo: str, email_dono: str = Query(...), db: Session = Depends(get_db)):
     quadro = db.query(models.Quadro).filter(models.Quadro.codigo == codigo).first()

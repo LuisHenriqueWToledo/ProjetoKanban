@@ -41,9 +41,10 @@
     <!-- Formulário de Quadro -->
     <div x-show="modal.type === 'quadro'" class="space-y-3">
       <div>
-        <input x-model="fQuadro.codigo" placeholder="Código (ex: AB12)" maxlength="4"
+        <input x-model="fQuadro.codigo" placeholder="Código (ex: AB12)" maxlength="4" :readonly="quadroEditMode"
           class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
-        <p class="text-xs text-gray-400 mt-1">2 letras maiúsculas + 2 dígitos</p>
+        <p class="text-xs text-gray-400 mt-1" x-show="!quadroEditMode">2 letras maiúsculas + 2 dígitos</p>
+        <p class="text-xs text-gray-400 mt-1" x-show="quadroEditMode">Código fixo do projeto</p>
       </div>
       <div>
         <input x-model="fQuadro.nome" placeholder="Nome do quadro"
@@ -304,6 +305,10 @@
       <button @click="voltarLista()" x-show="quadroAtual" class="text-xs bg-indigo-500 hover:bg-indigo-400 px-3 py-1 rounded-lg">
         ← Projetos
       </button>
+      <button @click="abrirModalEditarQuadro(quadroAtual)" x-show="quadroAtual && quadroAtual.email_dono === session.email"
+        class="text-xs bg-white/10 hover:bg-white/20 px-3 py-1 rounded-lg border border-white/20">
+        Editar projeto
+      </button>
       <button @click="logout()" class="text-xs bg-indigo-900 hover:bg-indigo-800 px-3 py-1 rounded-lg">Sair</button>
     </div>
   </nav>
@@ -344,8 +349,12 @@
               <div class="flex items-start justify-between">
                 <p class="font-semibold text-gray-800 text-sm leading-tight cursor-pointer hover:text-indigo-700"
                    @click="abrirQuadro(q)" x-text="q.nome"></p>
-                <button @click.stop="confirmarExcluirQuadro(q)"
-                  class="text-red-300 hover:text-red-500 text-sm ml-2 flex-shrink-0">✕</button>
+                <div class="flex items-center gap-2 ml-2 flex-shrink-0" x-show="q.email_dono === session.email">
+                  <button @click.stop="abrirModalEditarQuadro(q)"
+                    class="text-indigo-300 hover:text-indigo-600 text-sm" title="Editar projeto">✎</button>
+                  <button @click.stop="confirmarExcluirQuadro(q)"
+                    class="text-red-300 hover:text-red-500 text-sm">✕</button>
+                </div>
               </div>
               <p class="text-xs text-gray-400 mt-1" x-text="q.codigo"></p>
               <p class="text-xs text-gray-500 mt-2 line-clamp-2" x-text="q.descricao"></p>
@@ -419,13 +428,19 @@
               <p class="text-xs text-gray-500" x-text="'Responsavel: ' + r.responsavel"></p>
             </div>
             <div class="flex items-center gap-2">
+              <button @click="toggleRaiaMinimizada(r.id_raia)"
+                class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 px-2 py-1 rounded-lg"
+                :title="raiaMinimizada(r.id_raia) ? 'Expandir raia' : 'Minimizar raia'"
+                x-text="raiaMinimizada(r.id_raia) ? 'Expandir' : 'Minimizar'"></button>
               <span class="text-xs bg-slate-100 text-slate-700 px-2 py-0.5 rounded-full" x-text="'Ordem: ' + r.ordem_exibicao"></span>
+              <span x-show="raiaMinimizada(r.id_raia)" class="text-xs bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full"
+                x-text="'Cartões: ' + totalCartoesNaRaia(r.id_raia)"></span>
               <button @click="abrirModalEditarRaia(r)" class="text-indigo-300 hover:text-indigo-500 text-sm" title="Editar raia">✏️</button>
               <button @click="confirmarExcluirRaia(r)" class="text-red-300 hover:text-red-500 text-sm" title="Excluir raia">✕</button>
             </div>
           </div>
 
-          <div class="grid grid-cols-4 gap-4">
+          <div x-show="!raiaMinimizada(r.id_raia)" class="grid grid-cols-4 gap-4">
             <template x-for="col in colunas" :key="col.id + '-' + r.id_raia">
               <div class="bg-gray-50 rounded-xl p-3 drop-zone"
                 @dragover.prevent="$el.classList.add('over')"
@@ -514,6 +529,7 @@ function app() {
     draggingCodigo: null,
     draggingQuadroCodigo: null,
     membros: [],
+    raiasMinimizadas: {},
     // forms internos
     fQuadro: { codigo: '', nome: '', descricao: '', limite_wip: 10 },
     fCartao: { codigo: '', id_raia: 0, nome: '', descricao: '', responsavel: '', prioridade: 'MEDIA', data_limite: '', coluna: 'A FAZER' },
@@ -521,6 +537,7 @@ function app() {
     fMembro: { email: '' },
     cartaoEditMode: false,
     raiaEditMode: false,
+    quadroEditMode: false,
     fPerfil: { nome: '', senha: '' },
     showSenhaPerfil: false,
 
@@ -581,11 +598,11 @@ function app() {
       const partes = v.split('@');
       if (partes.length !== 2) return "Email deve conter exatamente um '@'";
       const [local, dominio] = partes;
-      if (local.length < 2 || local.length > 10) return 'Parte local do email deve ter entre 2 e 10 caracteres';
+      if (local.length < 2 || local.length > 20) return 'Parte local do email deve ter entre 2 e 20 caracteres';
       if (dominio.length < 2 || dominio.length > 20) return 'Domínio do email deve ter entre 2 e 20 caracteres';
       if (local.startsWith('.') || local.endsWith('.') || dominio.startsWith('.') || dominio.endsWith('.'))
         return 'Email não pode começar ou terminar com ponto em nenhuma das partes';
-      if ([local, dominio].some(p => !/^[A-Za-z.]+$/.test(p))) return 'Email pode conter apenas letras e pontos';
+      if ([local, dominio].some(p => !/^[A-Za-z0-9._-]+$/.test(p))) return 'Email pode conter apenas letras, números, pontos, _ ou -';
       if ([local, dominio].some(p => p.includes('..'))) return 'Email não pode ter pontos consecutivos';
       return null;
     },
@@ -665,6 +682,7 @@ function app() {
     },
 
     abrirModalQuadro() {
+      this.quadroEditMode = false;
       this.fQuadro = { codigo: '', nome: '', descricao: '', limite_wip: 10 };
       this.modalError = '';
       this.modal = {
@@ -676,14 +694,47 @@ function app() {
       };
     },
 
+    abrirModalEditarQuadro(q) {
+      this.quadroEditMode = true;
+      this.fQuadro = { codigo: q.codigo, nome: q.nome, descricao: q.descricao, limite_wip: q.limite_wip };
+      this.modalError = '';
+      this.modal = {
+        open: true,
+        type: 'quadro',
+        title: 'Editar Quadro',
+        btnLabel: 'Salvar',
+        confirm: () => this.editarQuadro(),
+      };
+    },
+
     async criarQuadro() {
       try {
         const payload = { ...this.fQuadro, limite_wip: parseInt(this.fQuadro.limite_wip) };
         await this.api('POST', `/quadros/?email_dono=${encodeURIComponent(this.session.email)}`, payload);
         this.modal.open = false;
         this.modalError = '';
+        this.quadroEditMode = false;
         await this.carregarQuadros();
         this.showToast('Quadro criado!');
+      } catch(e) { this.showModalError(e.message); }
+    },
+
+    async editarQuadro() {
+      try {
+        const payload = {
+          nome: this.fQuadro.nome,
+          descricao: this.fQuadro.descricao,
+          limite_wip: parseInt(this.fQuadro.limite_wip),
+        };
+        await this.api('PUT', `/quadros/${this.fQuadro.codigo}?email_dono=${encodeURIComponent(this.session.email)}`, payload);
+        this.modal.open = false;
+        this.modalError = '';
+        this.quadroEditMode = false;
+        if (this.quadroAtual && this.quadroAtual.codigo === this.fQuadro.codigo) {
+          this.quadroAtual = { ...this.quadroAtual, ...payload };
+        }
+        await this.carregarQuadros();
+        this.showToast('Quadro atualizado!');
       } catch(e) { this.showModalError(e.message); }
     },
 
@@ -742,6 +793,18 @@ function app() {
 
     raiasOrdenadas() {
       return [...this.raias].sort((a, b) => (a.ordem_exibicao - b.ordem_exibicao) || (a.id_raia - b.id_raia));
+    },
+
+    toggleRaiaMinimizada(idRaia) {
+      this.raiasMinimizadas[idRaia] = !this.raiasMinimizadas[idRaia];
+    },
+
+    raiaMinimizada(idRaia) {
+      return !!this.raiasMinimizadas[idRaia];
+    },
+
+    totalCartoesNaRaia(idRaia) {
+      return this.cartoes.filter(c => c.id_raia === idRaia).length;
     },
 
     abrirModalRaia() {

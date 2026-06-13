@@ -36,8 +36,8 @@ def validar_codigo(v: str) -> str:
 
 
 def validar_texto(v: str) -> str:
-    if not (5 <= len(v) <= 30):
-        raise ValueError("Texto deve ter entre 5 e 30 caracteres")
+    if not (5 <= len(v) <= 200 ):
+        raise ValueError("Texto deve ter entre 5 e 200 caracteres")
     if not v[0].isupper():
         raise ValueError("Texto deve começar com letra maiúscula")
     if "  " in v:
@@ -53,8 +53,8 @@ def validar_email(v: str) -> str:
     nome, dominio = v.split('@')
 
     # 2. Validação de Comprimento (Mantendo a regra dos seus colegas)
-    if not (2 <= len(nome) <= 10):
-        raise ValueError("Parte local do email deve ter entre 2 e 10 caracteres")
+    if not (2 <= len(nome) <= 20):
+        raise ValueError("Parte local do email deve ter entre 2 e 20 caracteres")
     if not (2 <= len(dominio) <= 20):
         raise ValueError("Domínio do email deve ter entre 2 e 20 caracteres")
 
@@ -177,6 +177,24 @@ class QuadroCreate(BaseModel):
     @field_validator("codigo")
     @classmethod
     def check_codigo(cls, v): return validar_codigo(v)
+
+    @field_validator("nome")
+    @classmethod
+    def check_nome(cls, v): return validar_texto(v)
+
+    @field_validator("descricao")
+    @classmethod
+    def check_descricao(cls, v): return validar_texto(v)
+
+    @field_validator("limite_wip")
+    @classmethod
+    def check_limite(cls, v): return validar_limite(v)
+
+
+class QuadroUpdate(BaseModel):
+    nome: str
+    descricao: str
+    limite_wip: int
 
     @field_validator("nome")
     @classmethod

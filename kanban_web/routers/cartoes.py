@@ -99,17 +99,18 @@ def mover_cartao(codigo: str, payload: schemas.CartaoMover, codigo_quadro: str =
 
     quadro = db.query(models.Quadro).filter(models.Quadro.codigo == codigo_quadro).first()
 
-    # Verificar limite WIP na coluna destino (excluindo o próprio cartão)
-    qtd_coluna = db.query(models.Cartao).filter(
-        models.Cartao.codigo_quadro == cartao.codigo_quadro,
-        models.Cartao.coluna == payload.coluna.value,
-        models.Cartao.codigo != codigo,
-    ).count()
-    if qtd_coluna >= quadro.limite_wip:
-        raise HTTPException(status_code=409, detail=f"Limite WIP atingido na coluna '{payload.coluna.value}'")
-
     agora = datetime.utcnow()
     nova_coluna = payload.coluna.value
+
+    # O limite WIP só vale para colunas de trabalho em andamento.
+    if nova_coluna in ("FAZENDO", "EM TESTE"):
+        qtd_coluna = db.query(models.Cartao).filter(
+            models.Cartao.codigo_quadro == cartao.codigo_quadro,
+            models.Cartao.coluna == nova_coluna,
+            models.Cartao.codigo != codigo,
+        ).count()
+        if qtd_coluna >= quadro.limite_wip:
+            raise HTTPException(status_code=409, detail=f"Limite WIP atingido na coluna '{nova_coluna}'")
 
     # Registrar timestamps de ciclo
     if nova_coluna == "FAZENDO" and cartao.iniciado_em is None:
